@@ -8,18 +8,14 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.UnsupportedEncodingException;
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
 public class HTMLparser {
-	public static void writeTofile(ArrayList<String> content,String file) throws FileNotFoundException, UnsupportedEncodingException{
+	public static void writeTofile(String content,String file) throws FileNotFoundException, UnsupportedEncodingException{
 		PrintWriter writer = new PrintWriter(file, "UTF-8");
-		for(String item: content){
-			writer.println(item);
-		}
+		writer.println(content);
 		writer.close();
 	}
 	public static String readFromFile(String fileName) throws FileNotFoundException{
@@ -33,9 +29,8 @@ public class HTMLparser {
 			BufferedReader input =  new BufferedReader(new FileReader(filename));
 			try {
 				String line = null;
-				while (( line = input.readLine()) != null) {
+				while ((line = input.readLine()) != null) {
 					contents.append(line);
-					contents.append(System.getProperty("line.separator"));
 				}
 			}
 			finally {
@@ -47,8 +42,7 @@ public class HTMLparser {
 		}
 		return contents.toString();
 	}
-	public static Map<Integer,String> ParseDocs(){
-		String directoryLocation="/Users/Anil/Downloads/docsnew/";
+	public static Map<Integer,String> ParseDocs(String directoryLocation){
 		/*
 		 * read directory
 		 */
@@ -64,47 +58,35 @@ public class HTMLparser {
 		/*
 		 * loop through the files to read its contents
 		 */
-		//for(File indi: files){
-		for(int i=1;i<92;i++){
-			//	System.out.println(files[i]);
-
+		int i =1;
+		for(File eachFile : files)
+		{
 			/*
 			 * read contents of file
 			 */
 			BufferedReader reader = null;
 			try{
-				reader = new BufferedReader(new FileReader(files[i]));
+				reader = new BufferedReader(new FileReader(eachFile));
 				String line = null;
 				final String pattern = "<(\"[^\"]*\"|'[^']*'|[^'\">])*>";
 				final String escape = "(?s)<!.*?(/>|<-->)";
 				final String scriptPattern = "(?s)<script.*?(/>|</script>)";
 				StringBuilder sb = new StringBuilder();
-
-				while(true){
-					line = reader.readLine();
+				
+				while((line=reader.readLine())!=null)
 					sb.append(line);
-					if(line ==null){
-						//System.out.println("No contents in the file");
-						break;
-					}
-				}
 				line = sb.toString();
-				//System.out.println(line.replaceAll(scriptPattern, "").replaceAll(escape, "").replaceAll(pattern, " ").replaceAll("\t", ""));
-				ArrayList<String> wordList = new ArrayList<String>(Arrays.asList(line.replaceAll(scriptPattern, "").replaceAll(escape, "").replaceAll(pattern, " ").replaceAll("&#160;","").replaceAll("\t", "").split("\\s+")));
-
-				/*for(int x=0;x<wordList.size();x++){
-					System.out.println(wordList.get(x));
-				}*/
+				String parsedString = line.replaceAll(scriptPattern, "").replaceAll(escape, "").replaceAll(pattern, " ").replaceAll("&#160;","").replaceAll("\t", "");
+				String cleanedText = StringUtility.cleanText(parsedString);
+				
 				/*
 				 * write to file
 				 */
-				writeTofile(wordList, String.valueOf(i)+".txt");
-				handler.get((Integer)i);
-
+				writeTofile(cleanedText, String.valueOf(i)+".txt");
 				handler.put((Integer)i, readFromFile(String.valueOf(i)+".txt"));
 
-
-				fileMapping.setProperty(String.valueOf(files[i]),String.valueOf(i));
+				//create a mapping between document name and document ID created.
+				fileMapping.setProperty(String.valueOf(i),eachFile.getPath());
 
 			}catch(Exception e){
 				e.getStackTrace();
@@ -117,6 +99,7 @@ public class HTMLparser {
 					}
 				}
 			}
+			i++;
 		}
 		try{
 			FileOutputStream out = new FileOutputStream("FileMappings.properties");

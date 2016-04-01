@@ -10,8 +10,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 <title>Search-Engine Version-1</title>
 
-<link rel="stylesheet" href="css/global.css" type="text/css"
-	media="screen, projection">
+<link rel="stylesheet" href="css/global.css" type="text/css" media="screen, projection">
 <link rel="stylesheet" href="css/main.css" type="text/css">
 <link rel="stylesheet" type="text/css" href="css/sticky-footer.css" />
 <link rel="stylesheet" type="text/css" href="css/application.css" />

@@ -7,12 +7,14 @@ public class PostingsList
 {
 	private int termFrequency;
 	private int documentFrequency;
+	private double idf;
 	private Map<Integer,Integer> postingsList;
 	
-	public PostingsList(int termFrequency,int docFrequency,Map<Integer,Integer> postingsList)
+	public PostingsList(int termFrequency,int docFrequency,double idf,Map<Integer,Integer> postingsList)
 	{
 		this.termFrequency = termFrequency;
 		this.documentFrequency = docFrequency;
+		this.idf = idf;
 		this.postingsList = postingsList;
 	}
 	public PostingsList()
@@ -30,6 +32,12 @@ public class PostingsList
 	}
 	public void setDocumentFrequency(int documentFrequency) {
 		this.documentFrequency = documentFrequency;
+	}
+	public double getIdf() {
+		return idf;
+	}
+	public void setIdf(double idf) {
+		this.idf = idf;
 	}
 	public Map<Integer,Integer> getPostingsList() {
 		return postingsList;

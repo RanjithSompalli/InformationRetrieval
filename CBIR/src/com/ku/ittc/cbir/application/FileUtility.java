@@ -4,6 +4,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.List;
 import java.util.Map;
 
 public class FileUtility 
@@ -24,6 +25,8 @@ public class FileUtility
 				sb.append(":");
 				PostingsList pl = term.getValue();
 				sb.append(pl.getDocumentFrequency());
+				sb.append(",");
+				sb.append(pl.getIdf());
 				sb.append(",");
 				sb.append(pl.getTermFrequency());
 				sb.append(",");
@@ -71,5 +74,36 @@ public class FileUtility
 			e.printStackTrace();
 		}
 		System.out.println("IDF file Saved to disk!!!");
+	}
+
+	public static void writeDocumentVectorsToFile(String fileName, List<Map<Integer, Double>> documentVectors)
+	{
+		try
+		{
+			File file = new File(fileName);
+			file.createNewFile();
+			
+			FileWriter fw = new FileWriter(file.getAbsoluteFile());
+			BufferedWriter bw = new BufferedWriter(fw);
+			int counter = 1;
+			for(Map<Integer,Double> documentVector : documentVectors)
+			{
+				StringBuilder sb = new StringBuilder();
+				sb.append("D"+counter).append("=");
+				for(Integer term : documentVector.keySet())
+				{
+					sb.append(term).append(":").append(documentVector.get(term)).append(",");
+				}
+				bw.write(sb.toString());
+				bw.newLine();
+				counter++;
+			}
+			bw.close(); 
+		} 
+		catch (IOException e) 
+		{
+			e.printStackTrace();
+		}
+		System.out.println("Document Vectors Saved to disk!!!");
 	}
 }

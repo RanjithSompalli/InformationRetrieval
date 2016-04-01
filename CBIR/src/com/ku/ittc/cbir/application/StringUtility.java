@@ -8,7 +8,7 @@ public class StringUtility
 	 * @param str
 	 * @return cleaned String
 	 */
-	public static String cleanDescription(String str)
+	public static String cleanText(String str)
 	{
 		String removeHyphens = str.replaceAll("- ", "");
 		String alphaOnly = removeHyphens.replaceAll("[^a-zA-Z]+"," ");

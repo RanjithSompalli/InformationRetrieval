@@ -387,5 +387,12 @@ public class Porter {
 
     return str;
     } //stripAffixes
+  
+  public static void main(String args[])
+  {
+	  Porter porter = new Porter();
+	  System.out.println("Inside porter");
+	  System.out.println(porter.stripAffixes("ashtonishment"));
+  }
 
 } //class

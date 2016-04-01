@@ -1,5 +1,6 @@
 package com.ku.ittc.cbir.application;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
@@ -19,9 +20,10 @@ public class KeyWordFrequencyEvaluator
 	
 	public static void main(String[] args)
 	{
-		
-		//Get the Descriptions in cleaned and in lower case form the Database.
-		Map<Integer,String> descriptionList = DBAccess.getDescriptionFromDB();
+		//update this location to local document location
+		String directoryLocation = "D:\\Ranjith\\Projects\\GitProjects\\docsTest";
+		//Get the Descriptions in cleaned and in lower case form the Crawled Documents.
+		Map<Integer,String> descriptionList = HTMLparser.ParseDocs(directoryLocation);
 		
 		if(descriptionList!=null && descriptionList.size()>0)
 		{
@@ -34,19 +36,17 @@ public class KeyWordFrequencyEvaluator
 			Map<String,List<Integer>> inverseIndex = buildInverseIndex(descriptionList);
 			System.out.println(inverseIndex.size());//total number of terms in dictionary
 			
-			//Build the actual Term Dictionary to Postings List Mapping (FInal Inverse Index)
+			//Build the actual Term Dictionary to Postings List Mapping (FInal Inverse Index) and write it to file
 			//Format: Each Term: DocFrequency, TermFrequency, Map of DocIds and term frequency in that doc (document object)
 			//e.g.: for above Term1-> 4,9, [1->2],[2->3]->[3->3]->[10->1]
 			Map<String,PostingsList> dictionary = buildPostingsList(inverseIndex);
-			
-			//Write the inverse index to file
 			FileUtility.writeInverseIndexToFile("inverseIndex.txt",dictionary);
 			
-			//generate the IDF value for each term and store it in a text file in format term:IDF
-			Map<String,Double> termIDFMap = calculateIDF(dictionary);
-			FileUtility.writeTermIDF("termIDF.txt",termIDFMap);
-			
-			//Next step is to build Vector Space Model
+			//Build the document vectors and write the document vectors to text files to be used by search engine
+			//Format: Each Document D1=<term1:tf-idf1>,<term2:tf-idf2>,....<termn:tf-idfn> 
+			//note: a term will be added to document vector only if the tf-idf != 0.0 to eliminate sparse vectors.
+			List<Map<Integer,Double>> documentVectors = buildDocumentVectors(dictionary);
+			FileUtility.writeDocumentVectorsToFile("documentVectors.txt",documentVectors);
 		}
 	}
 	
@@ -71,7 +71,7 @@ public class KeyWordFrequencyEvaluator
 			String[] descriptionTokens = description.split("\\s+");
 			for(String str : descriptionTokens)
 			{
-				if(!str.equals("") && !stopWordsSet.contains(str))
+				if(!str.equals("")) //&& !stopWordsSet.contains(str))
 				{
 					//perform the stemming
 					String stemmedString = stemmer.stripAffixes(str);
@@ -103,12 +103,12 @@ public class KeyWordFrequencyEvaluator
 		Map<String,PostingsList> dictionary = new TreeMap<String,PostingsList>();
 		for(String term : inverseIndex.keySet())
 		{
-			
 			List<Integer> docList = inverseIndex.get(term);
 			int termFrequency = docList.size();
 			int docFrequency = getDocumentFrequecy(docList);
+			double idf = Math.log10((double)totalNumberOfDocuments/docFrequency);
 			Map<Integer,Integer> postingsList = getDocFrequencyForEachDoc(docList);
-			PostingsList termPostingsList = new PostingsList(termFrequency,docFrequency,postingsList);
+			PostingsList termPostingsList = new PostingsList(termFrequency,docFrequency,idf,postingsList);
 			dictionary.put(term, termPostingsList);
 		}
 		return dictionary;
@@ -154,25 +154,37 @@ public class KeyWordFrequencyEvaluator
 		return docFrequency;
 	}
 	
+	
+	
 	/**
-	 * Calculate IDF for each term
+	 * To build the document vectors for all the documents in the term space.
 	 * @param dictionary
-	 * @return
+	 * @return ArraysList : a List of document vectors
 	 */
-	private static Map<String, Double> calculateIDF(Map<String, PostingsList> dictionary) 
+	private static List<Map<Integer,Double>> buildDocumentVectors(Map<String,PostingsList> dictionary)
 	{
-		Map<String,Double> termIDFMap = new LinkedHashMap<String,Double>();
-		for(String term: dictionary.keySet())
+		List<Map<Integer,Double>> documentVectors = new ArrayList<Map<Integer,Double>>();
+		for(int i=1;i<=totalNumberOfDocuments;i++)
 		{
-			PostingsList temPl = dictionary.get(term);
-			//double TF = temPl.getTermFrequency();
-			double IDF = Math.log(totalNumberOfDocuments/temPl.getDocumentFrequency());
-			//double TF_IDF = TF * IDF;
-			termIDFMap.put(term,IDF);
+			Map<Integer,Double> documentVector = new TreeMap<Integer,Double>();
+			int counter =1;
+			for(String term : dictionary.keySet())
+			{
+				double idf = dictionary.get(term).getIdf();
+				Map<Integer,Integer> postingsList = dictionary.get(term).getPostingsList();
+				if(postingsList.get(i)!=null && idf!=0.0)
+				{
+					double tf_idf = postingsList.get(i)*idf;
+					documentVector.put(counter, tf_idf);
+				}
+				counter++;
+			}
+			documentVectors.add(documentVector);
 		}
-		return sortByValue(termIDFMap);
+		return documentVectors;
 	}
-
+	
+	
 	/**
 	 * To sort the map based on the IDF value decreasing
 	 * @param map

@@ -9,12 +9,12 @@
 		  	}
 			else
 		  	{
-		    	echo "<input class='default-value search-field'type='text' value='Enter Query Terms Here...' name='s'  />";
+		    	echo "<input class='default-value search-field'type='text' name='s'  />";
 		  	}
 	   ?>
    
        <div class="mask roundedCorners">
-			<button type="submit" class="button roundedCorners gradient"  onClick="return chk_genus('s','message','<b>Please enter a string like Silver.')" >Search</button>
+			<button type="submit" class="button roundedCorners gradient">Search</button>
        </div>
 	</form>
 </div>
