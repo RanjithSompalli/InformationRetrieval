@@ -35,16 +35,15 @@
 	height: expression(this.height > 56px ? "56px" : this.height); 
 }
 
-.search_bar .form-search-box{
+.form-search-box{
 	
 width:504px;
 height:30px;
 font-family:Arial, Helvetica, sans-serif;
 font-size:18px;
 padding-left:8px;
-border-style: none;
-margin:0px;
-float:left;
+margin:10px;
+float:middle;
 
 	
 }

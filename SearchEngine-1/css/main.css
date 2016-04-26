@@ -413,7 +413,7 @@ input:focus {
 
 #search-wrapper {
     width: 640px;
-    height: 450px;
+    height: 100px;
     margin-top: 0px;
     margin-left: auto;
     margin-right: auto;
@@ -505,7 +505,6 @@ input:focus {
 
    height: 31px;
    vertical-align: middle;
-   position: absolute;
    top: 2px; 
    left: 560px;
    }
