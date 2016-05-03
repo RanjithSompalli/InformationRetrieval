@@ -3,6 +3,7 @@
 <?php
 	error_reporting(E_ALL^E_NOTICE^E_WARNING);//
 	require_once "search/Paginator.php";
+	ini_set('memory_limit', '-1');
 ?>
 <html lang="en">
 <head>
