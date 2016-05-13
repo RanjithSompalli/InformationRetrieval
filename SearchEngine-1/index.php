@@ -3,6 +3,7 @@
 <?php
 	error_reporting(E_ALL^E_NOTICE^E_WARNING);//
 	require_once "search/Paginator.php";
+	ini_set('memory_limit', '-1');
 ?>
 <html lang="en">
 <head>
@@ -10,31 +11,32 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 <title>National Park - Wikipedia</title>
 
-<link rel="stylesheet" href="css/global.css" type="text/css"
-	media="screen, projection">
+
 <link rel="stylesheet" href="css/main.css" type="text/css">
 <link rel="stylesheet" href="css/style.css" type="text/css">
 
 <script language="javascript" src="js/jquery-1.11.0.js"></script>
 <script type="text/javascript">
-
 		$(document).ready(function() {
 		 var search = "<?php echo $_GET['searchTerm']; ?>"
-		$("#mainsearch").val(search) ;
+		$("#mainSearch").val(search) ;
 		});
 	</script>
 </head>
 <body>
-	<form name='searchForm' id='searchForm' method='get' action="index.php">
+	<form name='searchForm' id='searchForm' method='get' action="SearchEngine-Basic.php">
 	<div class="search-box">
-		<input class="form-search-box" id="mainSearch" type="text" name='searchTerm' />
-		<input type="hidden" name="ipp" value="8" /> 
+		<h1 align="middle"> National Park Wiki - Basic</h1>
+		<input align="middle" class="form-search-box" id="mainSearch" type="text" name='searchTerm' />
+		<input type="hidden" name="ipp" value="6" /> 
 		<input type="hidden" name="page" value="1" />
+		<input type="hidden" id="relevantDocuments" name="relevantDocuments" value="0"/>
 		<button type="submit" class="button roundedCorners gradient">Search</button>
 	</div>
-		<div class="contents">
-<?php 
+	<div class="contents">
+<?php
 
+performSearch();
 
 
 function performSearch()
@@ -44,6 +46,7 @@ function performSearch()
 	//page = pagination variable (to limit x results per page)
 	//setting up search options
 	
+	$startTime = time();
 	if(!isset($_SESSION))
 	{
 		session_start();
@@ -63,7 +66,6 @@ function performSearch()
 	
 		
 		$term = $_GET['searchTerm'];
-
 		//clean the query terms and convert to lower case
 		$term = preg_replace("/[^a-zA-Z ]/","",$term);
 		$term = strtolower($term);
@@ -113,7 +115,6 @@ function performSearch()
 		
 		//read the IDF of each term from the Inverse Index file
 		$termIDF = ReadPostingsList::readTermIDFFromInverseIndexFile();
-
 		//calculate the query vector
 		$queryVector = array();
 		$cnt = 1;
@@ -137,7 +138,6 @@ function performSearch()
 	
 		//read the document vectors file
 		$documentVectors = $_SESSION['documentVectors'];
-
 		//Next Steps Identify the Candidate Documents
 		 $candidateDocuments = ReadPostingsList::identifyCandidateDocuments($queryTermFrequency);
 		 //if there are no candidate documents return no results
@@ -181,19 +181,20 @@ function performSearch()
 		}
 		
 		arsort($rankedDocuments);
+		$_SESSION['cosineSimilarityScores'] = $rankedDocuments;
 		$finalDocumentIds = array(); 
 		foreach($rankedDocuments as $docID => $similarity)
 		{
-			if($similarity==0)
-				break;
-			else 
-				array_push($finalDocumentIds,$docID);
+			array_push($finalDocumentIds,$docID);
 		}
 		$_SESSION['numDocs'] = count($finalDocumentIds);
 		$_SESSION['finalDocIds'] = $finalDocumentIds;
 		
+		$endTime = time();
+		$timeDiff = $endTime - $startTime;
+		$_SESSION['timeDiff'] = $timeDiff;
 		echo "<br />";
-		echo $_SESSION['numDocs']." relevant results";
+		echo $_SESSION['numDocs']." relevant results retrieved in ".$_SESSION['timeDiff']. " Seconds";
 		echo "<br /><br />";
 		
 		returnDoc();
@@ -201,19 +202,18 @@ function performSearch()
 	else if(isset($_GET['page']))
 	{
 		echo "<br />";
-		echo $_SESSION['numDocs']." relevant results";
+		echo $_SESSION['numDocs']." relevant results retrieved in ".$_SESSION['timeDiff']. " Seconds";
 		echo "<br /><br />";
 		
 		returnDoc();
 	}
 }
-
 function returnDoc(){
 	$numDocs = $_SESSION['numDocs'];
 	$docIds = $_SESSION['finalDocIds'];
 	$docIndex = $_SESSION['docIDURLMappings'];
 	$query = $_SESSION['queryTerms'];
-
+	$cosineSimilarityScores = $_SESSION['cosineSimilarityScores'];
 	$num_rows = $numDocs;
 	$pages = new Paginator;
 	$pages->current_page=1;
@@ -221,34 +221,32 @@ function returnDoc(){
 	$pages->default_ipp = 8;
 	$pages->mid_range = 7;
 	$pages->paginate();
-
 	//echo "<br><br>";
 	echo "<div class=","results","><ul>";
 	for($i=$pages->low;$i<=$pages->high;$i++)
 	{
 		if($i<$numDocs)
 		{
-			display($docIndex[$docIds[$i]],$query);
+			display($docIndex[$docIds[$i]],$query,$cosineSimilarityScores[$docIds[$i]]);
 		}
 	}
 	echo "</ul></div>";
 	echo "<br>";
 	echo $pages->display_pages();
 }
-
-function display($document,$query){
-
+function display($document,$query,$score)
+{
 	// Get file content
 	$file = file_get_contents($document);
-
 	$nakedFile = preg_replace("/docs\//","",$document);
 	$nakedFile = substr_replace($nakedFile,"",-4,4);
-
 	//get the title of the page if exists
 	if (preg_match("/<title>(.+)<\/title>/",$file,$matches) && isset($matches[1]))
 		$title = $matches[1];
 	else
 		$title = $nakedFile;
+	
+	$title = $title . "(Cosine Similarity : ".$score . ")";
 	 
 	$idxs = array();
 	$re = "?";
@@ -259,14 +257,11 @@ function display($document,$query){
 	$stripped = strtolower($stripped);
 	$stripped = preg_replace("/[^a-zA-Z ]/","?",$stripped);
 	$sentences = explode($re, $stripped);
-
 	//store the sentence with query term
 	$description = "";
-
 	$maxQ = 0;
 	$maxS = 0;
 	foreach ($sentences as $s){
-
 		$numOfWords = 0;
 		$newQ = array();
 		$flag = false;
@@ -278,7 +273,6 @@ function display($document,$query){
 				
 		}
 		$slen = strlen($s);
-
 		//make query words in the sentense bold	(do it for the sentence where max number of query word is found)
 		for($i=0;$i<count($newQ) && count($newQ)>=$maxQ; $i++){
 				
@@ -292,64 +286,30 @@ function display($document,$query){
 		}
 	}
 	//echo $description;
-
 	//Keep only first 30 words
 	$cutWords = "|((\w+[\s]+){1,30}).*|";
 	$description = preg_replace($cutWords,"$1",$description);
-
 	//highlight the query terms in the sentence
 	foreach ( $query as $q){
 		$pattern = "|(".$q.")|";
 		$description = preg_replace($pattern,"$1",$description);
 		$description = preg_replace("|(".$q.")|"," <b>$1</b> ",$description);
 	}
-
-	//Image Retrieval
-	preg_match_all("|<img.*?>|",$file, $matches);
-	$largest = -1;
-	$img = "";
-	$tmp =-1;
-	foreach ($matches[0] as $elem){
-		$width = preg_replace("|.*width=[ ]*\"(.*?)\".*|","$1",$elem);
-		$height = preg_replace("|.*height=[ ]*\"(.*?)\".*|","$1",$elem);
-
-		if (strlen ($width) > 5){
-			$width = -1;
-			$height= -1;
-		}
-		$tmp = $width * $height;
-
-		if ($tmp > $largest){
-			$largest = $tmp;
-			$img = $elem;
-				
-		}
-	}
-
+	
 	//Display
-	$divE = "<div class='a_'>";
-	$imgE = "<div class='a_img'>".$img."</div>";
+	$divE = "<div class='a_no_image'>";
 	$descE = "<div class='a_desc'>".ucfirst($description)."...</div></div></li>";
-	$newLine = "";
-
-	if ($img == NULL){
-		$divE = "<div class='a_no_image'>";
-		$imgE = "";
-		$newLine = "<br />";
-	}
+	$newLine = "<br />";
+	
 	if ($description == null){
 		$descE = "<div class='a_desc'>No description available</div></div>";
 	}
-
 	echo "<li>"."<a href='".$document."'>".$title."</a>";
 	echo $divE;
-	echo $imgE;
 	echo $descE;
 	echo $newLine;
 	echo "</li>";
-
 }
-performSearch();
 
 ?>
 

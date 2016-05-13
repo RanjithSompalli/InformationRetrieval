@@ -11,43 +11,66 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 <title>National Park - Wikipedia</title>
 
-<link rel="stylesheet" href="css/global.css" type="text/css"
-	media="screen, projection">
 <link rel="stylesheet" href="css/main.css" type="text/css">
 <link rel="stylesheet" href="css/style.css" type="text/css">
 
 <script language="javascript" src="js/jquery-1.11.0.js"></script>
 <script type="text/javascript">
+
 		$(document).ready(function() {
-		 var search = "<?php echo $_GET['searchTerm']; ?>"
+		var search = "<?php echo $_GET['searchTerm'];?>"
+		var relevantDocuments = "<?php echo $_GET['relevantDocuments']; ?>"
 		$("#mainSearch").val(search) ;
+		$("#relevantDocuments").val(relevantDocuments);
 		});
 
-		public function updateRelevantDocuments()
+		function updateRelevantDocuments(cb)
 		{
-			var el = document.getElementsById('results');
-			var tops = el.getElementsByName('input');
-
-			for(var i=0;i<tops.length;i++)
-			{
-				if(tops[i].type=='checkbox')
-				{
-					if(tops[i].checked == true)
-					{
-						var docId = tops[i].value;
-                          <?php 
-                          
-                          $relevantDocuments = $_SESSION['relevantDocuments'];
-                          array_push($relevantDocuments,'.docId.');
-                          echo count($relevantDocuments);
-                          $_SESSION['relevantDocuments'] = $relevantDocuments;
-                          ?>
-					}
-						
-				}
-			}
+			var el = document.getElementById('results');
+			var tops = el.getElementsByTagName('input');
+            var docId = cb.value;
+            var relevantDocuments = document.getElementById('relevantDocuments').value;
+            if(cb.checked)
+            {
+            	if(relevantDocuments == 0)
+                	relevantDocuments = docId;
+            	else
+            		relevantDocuments = relevantDocuments + ","+docId;
+            	document.getElementById('relevantDocuments').value = relevantDocuments;
+            	document.cookie = "relevantDocuments=" + document.getElementById('relevantDocuments').value ;
+            }
+            else
+            {
+            	var splittedString = relevantDocuments.split(",");
+            	var newRelevantDocuments ="";
+            	for(var i=0;i<splittedString.length;i++)
+            	{
+                	if(splittedString[i]!= docId)
+                	{
+                    	if(newRelevantDocuments == "")
+                    		newRelevantDocuments = splittedString[i];
+                    	else
+                        	newRelevantDocuments = newRelevantDocuments+","+splittedString[i];
+                	}
+            	}
+            	if(newRelevantDocuments=="")
+            		newRelevantDocuments = 0;
+            	document.getElementById('relevantDocuments').value = newRelevantDocuments;
+            	document.cookie = "relevantDocuments=" + document.getElementById('relevantDocuments').value ;
+            }
 		}
-	</script>
+
+		/* function validateRelevantDocuments()
+		{
+			alert('insdie validation');
+			document.cookie = "relevantDocuments=0"; 
+			if(document.getElementById('relevantDocuments').value == 0)
+				return false;
+			return true;
+		} */
+			
+
+</script>
 </head>
 <body>
 	<form name='searchForm' id='searchForm' method='get' action="SearchEngine-RelevancyFeedback.php">
@@ -56,6 +79,7 @@
 		<input align="middle" class="form-search-box" id="mainSearch" type="text" name='searchTerm' />
 		<input type="hidden" name="ipp" value="6" /> 
 		<input type="hidden" name="page" value="1" />
+		<input type="hidden" id="relevantDocuments" name="relevantDocuments" value="0"/>
 		<button type="submit" class="button roundedCorners gradient">Search</button>
 	</div>
 	<div class="contents">
@@ -91,88 +115,153 @@ function performSearch()
 		$_SESSION['relevantDocuments'] = array();
 	
 		
-		$term = $_GET['searchTerm'];
-		//clean the query terms and convert to lower case
-		$term = preg_replace("/[^a-zA-Z ]/","",$term);
-		$term = strtolower($term);
-		$term = trim($term);
-		$term = preg_replace("/\s+$/"," ",$term);
-	
-		//logic for performing stop word and stemming and other operations goes here
-		//split the words based on spaces
-		$query_terms = explode(" ",$term);
-	
-		//calculate the query term frequency
-		$queryTermFrequency = array();
-		$queryTermCount =0 ;
-		$finalQueryTerms = array();
-		for($i=0;$i<count($query_terms);$i++)
+		$relevantDocuments = $_GET['relevantDocuments'];
+		//No Relevant Documents initial Query. Perform general Vector Space Model
+		if($relevantDocuments==0)
 		{
-			$cleanedTerm = $query_terms[$i];
-			$stopWords = array("a", "about", "above", "across", "after", "afterwards", "again", "against", "all", "almost", "alone", "along", "already", "also","although","always","am","among", "amongst", "amoungst", "amount",  "an", "and", "another", "any","anyhow","anyone","anything","anyway", "anywhere", "are", "around", "as",  "at", "back","be","became", "because","become","becomes", "becoming", "been", "before", "beforehand", "behind", "being", "below", "beside", "besides", "between", "beyond", "bill", "both", "bottom","but", "by", "call", "can", "cannot", "cant", "co", "con", "could", "couldnt", "cry", "de", "describe", "detail", "do", "done", "down", "due", "during", "each", "eg", "eight", "either", "eleven","else", "elsewhere", "empty", "enough", "etc", "even", "ever", "every", "everyone", "everything", "everywhere", "except", "few", "fifteen", "fify", "fill", "find", "fire", "first", "five", "for", "former", "formerly", "forty", "found", "four", "from", "front", "full", "further", "get", "give", "go", "had", "has", "hasnt", "have", "he", "hence", "her", "here", "hereafter", "hereby", "herein", "hereupon", "hers", "herself", "him", "himself", "his", "how", "however", "hundred", "ie", "if", "in", "inc", "indeed", "interest", "into", "is", "it", "its", "itself", "keep", "last", "latter", "latterly", "least", "less", "ltd", "made", "many", "may", "me", "meanwhile", "might", "mill", "mine", "more", "moreover", "most", "mostly", "move", "much", "must", "my", "myself", "name", "namely", "neither", "never", "nevertheless", "next", "nine", "no", "nobody", "none", "noone", "nor", "not", "nothing", "now", "nowhere", "of", "off", "often", "on", "once", "one", "only", "onto", "or", "other", "others", "otherwise", "our", "ours", "ourselves", "out", "over", "own","part", "per", "perhaps", "please", "put", "rather", "re", "same", "see", "seem", "seemed", "seeming", "seems", "serious", "several", "she", "should", "show", "side", "since", "sincere", "six", "sixty", "so", "some", "somehow", "someone", "something", "sometime", "sometimes", "somewhere", "still", "such", "system", "take", "ten", "than", "that", "the", "their", "them", "themselves", "then", "thence", "there", "thereafter", "thereby", "therefore", "therein", "thereupon", "these", "they", "thickv", "thin", "third", "this", "those", "though", "three", "through", "throughout", "thru", "thus", "to", "together", "too", "top", "toward", "towards", "twelve", "twenty", "two", "un", "under", "until", "up", "upon", "us", "very", "via", "was", "we", "well", "were", "what", "whatever", "when", "whence", "whenever", "where", "whereafter", "whereas", "whereby", "wherein", "whereupon", "wherever", "whether", "which", "while", "whither", "who", "whoever", "whole", "whom", "whose", "why", "will", "with", "within", "without", "would", "yet", "you", "your", "yours", "yourself", "yourselves", "the");
-	
-			if(!in_array($cleanedTerm,$stopWords))
+			$term = $_GET['searchTerm'];
+			//clean the query terms and convert to lower case
+			$term = preg_replace("/[^a-zA-Z ]/","",$term);
+			$term = strtolower($term);
+			$term = trim($term);
+			$term = preg_replace("/\s+$/"," ",$term);
+		
+			//logic for performing stop word and stemming and other operations goes here
+			//split the words based on spaces
+			$query_terms = explode(" ",$term);
+		
+			//calculate the query term frequency
+			$queryTermFrequency = array();
+			$queryTermCount =0 ;
+			$finalQueryTerms = array();
+			for($i=0;$i<count($query_terms);$i++)
 			{
-				if(!in_array($cleanedTerm,$finalQueryTerms))
-					array_push($finalQueryTerms,$cleanedTerm);
-				$stemmedWord = PorterStemmer::Stem ( $cleanedTerm );
-				if (array_key_exists ( $stemmedWord, $queryTermFrequency )) 
+				$cleanedTerm = $query_terms[$i];
+				$stopWords = array("a", "about", "above", "across", "after", "afterwards", "again", "against", "all", "almost", "alone", "along", "already", "also","although","always","am","among", "amongst", "amoungst", "amount",  "an", "and", "another", "any","anyhow","anyone","anything","anyway", "anywhere", "are", "around", "as",  "at", "back","be","became", "because","become","becomes", "becoming", "been", "before", "beforehand", "behind", "being", "below", "beside", "besides", "between", "beyond", "bill", "both", "bottom","but", "by", "call", "can", "cannot", "cant", "co", "con", "could", "couldnt", "cry", "de", "describe", "detail", "do", "done", "down", "due", "during", "each", "eg", "eight", "either", "eleven","else", "elsewhere", "empty", "enough", "etc", "even", "ever", "every", "everyone", "everything", "everywhere", "except", "few", "fifteen", "fify", "fill", "find", "fire", "first", "five", "for", "former", "formerly", "forty", "found", "four", "from", "front", "full", "further", "get", "give", "go", "had", "has", "hasnt", "have", "he", "hence", "her", "here", "hereafter", "hereby", "herein", "hereupon", "hers", "herself", "him", "himself", "his", "how", "however", "hundred", "ie", "if", "in", "inc", "indeed", "interest", "into", "is", "it", "its", "itself", "keep", "last", "latter", "latterly", "least", "less", "ltd", "made", "many", "may", "me", "meanwhile", "might", "mill", "mine", "more", "moreover", "most", "mostly", "move", "much", "must", "my", "myself", "name", "namely", "neither", "never", "nevertheless", "next", "nine", "no", "nobody", "none", "noone", "nor", "not", "nothing", "now", "nowhere", "of", "off", "often", "on", "once", "one", "only", "onto", "or", "other", "others", "otherwise", "our", "ours", "ourselves", "out", "over", "own","part", "per", "perhaps", "please", "put", "rather", "re", "same", "see", "seem", "seemed", "seeming", "seems", "serious", "several", "she", "should", "show", "side", "since", "sincere", "six", "sixty", "so", "some", "somehow", "someone", "something", "sometime", "sometimes", "somewhere", "still", "such", "system", "take", "ten", "than", "that", "the", "their", "them", "themselves", "then", "thence", "there", "thereafter", "thereby", "therefore", "therein", "thereupon", "these", "they", "thickv", "thin", "third", "this", "those", "though", "three", "through", "throughout", "thru", "thus", "to", "together", "too", "top", "toward", "towards", "twelve", "twenty", "two", "un", "under", "until", "up", "upon", "us", "very", "via", "was", "we", "well", "were", "what", "whatever", "when", "whence", "whenever", "where", "whereafter", "whereas", "whereby", "wherein", "whereupon", "wherever", "whether", "which", "while", "whither", "who", "whoever", "whole", "whom", "whose", "why", "will", "with", "within", "without", "would", "yet", "you", "your", "yours", "yourself", "yourselves", "the");
+		
+				if(!in_array($cleanedTerm,$stopWords))
 				{
-					$queryTermFrequency ["$stemmedWord"] = $queryTermFrequency ["$stemmedWord"] + 1;
-				} 
-				else 
-				{
-					$queryTermFrequency ["$stemmedWord"] = 1;
+					if(!in_array($cleanedTerm,$finalQueryTerms))
+						array_push($finalQueryTerms,$cleanedTerm);
+					$stemmedWord = PorterStemmer::Stem ( $cleanedTerm );
+					if (array_key_exists ( $stemmedWord, $queryTermFrequency )) 
+					{
+						$queryTermFrequency ["$stemmedWord"] = $queryTermFrequency ["$stemmedWord"] + 1;
+					} 
+					else 
+					{
+						$queryTermFrequency ["$stemmedWord"] = 1;
+					}
+					$queryTermCount++;
 				}
-				$queryTermCount++;
 			}
-		}
-		
-		//if all the query terms are filtered by stop words
-		if($queryTermCount==0)
-		{
-			echo "</br>";
-			echo "No Results Found";
-			exit (0);
-		}
-		
-		
-		$_SESSION['queryTerms'] = $finalQueryTerms;
-		
-		//read the IDF of each term from the Inverse Index file
-		$termIDF = ReadPostingsList::readTermIDFFromInverseIndexFile();
-		//calculate the query vector
-		$queryVector = array();
-		$cnt = 1;
-		foreach($termIDF as $term => $idf)
-		{
-			if(array_key_exists($term, $queryTermFrequency) && $idf > 0.0)
+			
+			//if all the query terms are filtered by stop words
+			if($queryTermCount==0)
 			{
-				$tf_idf = $idf*$queryTermFrequency[$term];
-				$queryVector[$cnt] = $tf_idf;
+				echo "</br>";
+				echo "No Results Found";
+				exit (0);
 			}
-			$cnt++;
+			
+			
+			$_SESSION['queryTerms'] = $finalQueryTerms;
+			
+			//read the IDF of each term from the Inverse Index file
+			$termIDF = ReadPostingsList::readTermIDFFromInverseIndexFile();
+			//calculate the query vector
+			$queryVector = array();
+			$cnt = 1;
+			foreach($termIDF as $term => $idf)
+			{
+				if(array_key_exists($term, $queryTermFrequency) && $idf > 0.0)
+				{
+					$tf_idf = $idf*$queryTermFrequency[$term];
+					$queryVector[$cnt] = $tf_idf;
+				}
+				$cnt++;
+			}
+			
+			//if none of the query terms are present in the dictionary return no results
+			if(count($queryVector)==0)
+			{
+				echo "</br>";
+				echo "No Results Found";
+				exit (0);
+			}
+		
+			$_SESSION['queryVector'] = $queryVector;
+			
+			//read the document vectors file
+			$documentVectors = $_SESSION['documentVectors'];
+			//Next Steps Identify the Candidate Documents
+			$candidateDocuments = ReadPostingsList::identifyCandidateDocuments($queryTermFrequency);
+			//if there are no candidate documents return no results
+			if(count($candidateDocuments)==0)
+			{
+				echo "</br>";
+				echo "No Results Found";
+				exit (0);
+			}
+			
+			$_SESSION['candidateDocuments'] = $candidateDocuments;
+		}
+		else 
+		{
+			//Implement Rochio Algorithm and calculate new Query Vector and keep it in session
+			$alpha = 1.0;
+			$beta = 0.5;
+			$gamma = 0.0;
+			
+			$queryVector = $_SESSION['queryVector'];
+			
+			foreach($queryVector as $term => $idf)
+			{
+				$queryVector[$term] = $idf*$alpha;
+			}
+			
+			$relevantDocsArray = explode(",",$relevantDocuments);
+			//read the document vectors file
+			$documentVectors = $_SESSION['documentVectors'];
+			$cumulativeDocVector = $documentVectors[$relevantDocsArray[0]];
+			for($docNum = 1; $docNum<count($relevantDocsArray); $docNum++)
+			{
+				$documentVector = $documentVectors[$relevantDocsArray[$docNum]];
+				foreach($documentVector as $term => $idf)
+				{
+					if(array_key_exists($term, $cumulativeDocVector))
+						$cumulativeDocVector[$term] = $cumulativeDocVector[$term] + $idf;
+					else
+						$cumulativeDocVector[$term] = $idf;
+				}
+			}
+			$multiplicationFactor = $beta/count($relevantDocsArray);
+			foreach($cumulativeDocVector as $term=>$idf)
+			{
+				$cumulativeDocVector[$term] = $idf*$multiplicationFactor;
+			}
+			
+			$newQueryVector = array();
+			foreach($queryVector as $term => $idf)
+			{
+				if(array_key_exists($term, $cumulativeDocVector))
+					$newQueryVector[$term] = $idf + $cumulativeDocVector[$term];
+				else 
+					$newQueryVector[$term] = $idf;
+			}
+			
+			foreach($cumulativeDocVector as $term => $idf)
+			{
+				if(!array_key_exists($term, $newQueryVector))
+					$newQueryVector[$term] = $idf;
+			}
+			$_SESSION['queryVector'] = $newQueryVector;
 		}
 		
-		//if none of the query terms are present in the dictionary return no results
-		if(count($queryVector)==0)
-		{
-			echo "</br>";
-			echo "No Results Found";
-			exit (0);
-		}
-	
-		//read the document vectors file
-		$documentVectors = $_SESSION['documentVectors'];
-		//Next Steps Identify the Candidate Documents
-		 $candidateDocuments = ReadPostingsList::identifyCandidateDocuments($queryTermFrequency);
-		 //if there are no candidate documents return no results
-		 if(count($candidateDocuments)==0)
-		 {
-		 	echo "</br>";
-		 	echo "No Results Found";
-		 	exit (0);
-		 }
+		
+		$queryVector = $_SESSION['queryVector'];
+		$candidateDocuments = $_SESSION['candidateDocuments'];
+		
 		//Calculate the similarity between the candiate documents and the query vectors and display the results
 		//query vector in $queryVector and document vectors in $documentVectors.
 		//calculate the cosine similarity between each candiate document vector and query vector
@@ -222,7 +311,7 @@ function performSearch()
 		echo "<br />";
 		echo $_SESSION['numDocs']." relevant results retrieved in ".$_SESSION['timeDiff']. " Seconds";
 		echo "<br /><br />";
-		echo "Is Relevant? &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<button type='".submit."'.>Update Results</button>";
+		echo "Is Relevant? &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<button type='submit'>Update Results</button>";
 		echo "<br />";
 		returnDoc();
 	}
@@ -231,7 +320,7 @@ function performSearch()
 		echo "<br />";
 		echo $_SESSION['numDocs']." relevant results retrieved in ".$_SESSION['timeDiff']. " Seconds";
 		echo "<br /><br />";
-		echo "Is Relevant?";
+		echo "Is Relevant? &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<button type='submit'>Update Results</button>";
 		echo "<br />";
 		
 		returnDoc();
@@ -249,8 +338,9 @@ function returnDoc(){
 	$pages->items_total = $num_rows;
 	$pages->default_ipp = 8;
 	$pages->mid_range = 7;
+	$pages->relevantDocuments = 0;
 	$pages->paginate();
-	//echo "<br><br>";
+
 	echo "<div id=","results"," class=","results","><ul>";
 	for($i=$pages->low;$i<=$pages->high;$i++)
 	{
@@ -333,7 +423,7 @@ function display($docId,$document,$query,$score)
 	if ($description == null){
 		$descE = "<div class='a_desc'>No description available</div></div>";
 	}
-	echo "<li>"."<input type = 'checkbox' id='relevant' name='relevant' value='".$docId."'/><a href='".$document."'>".$title."</a>";
+	echo "<li>"."<input type = 'checkbox' id='relevant' name='relevant".$docId."' value='".$docId."' onclick='updateRelevantDocuments(this)'/><a href='".$document."'>".$title."</a>";
 	echo $divE;
 	echo $descE;
 	echo $newLine;

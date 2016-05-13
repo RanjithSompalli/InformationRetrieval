@@ -11,8 +11,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge" />
 <title>National Park - Wikipedia</title>
 
-<link rel="stylesheet" href="css/global.css" type="text/css"
-	media="screen, projection">
+
 <link rel="stylesheet" href="css/main.css" type="text/css">
 <link rel="stylesheet" href="css/style.css" type="text/css">
 
@@ -31,6 +30,7 @@
 		<input align="middle" class="form-search-box" id="mainSearch" type="text" name='searchTerm' />
 		<input type="hidden" name="ipp" value="6" /> 
 		<input type="hidden" name="page" value="1" />
+		<input type="hidden" id="relevantDocuments" name="relevantDocuments" value="0"/>
 		<button type="submit" class="button roundedCorners gradient">Search</button>
 	</div>
 	<div class="contents">
